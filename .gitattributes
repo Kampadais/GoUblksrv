@@ -1,0 +1,3 @@
+#Ignore all C files from metrics
+*.c linguist-vendored
+*.h linguist-vendored
