@@ -89,48 +89,13 @@ func notifyShutdown() {
 
 }
 
-func (d *UblkDevice) addC() error {
-	fmt.Println("ADDC()")
-	fmt.Println("Adding device with ID:", d.ID)
-	nrHwQueues := d.Queues
-	if nrHwQueues <= 0 {
-		nrHwQueues = int(C.DEF_NR_HW_QUEUES)
-	}
-
-	queueDepth := d.QueueDepth
-	if queueDepth <= 0 {
-		queueDepth = int(C.DEF_QD)
-	}
-
-	runDir := C.UBLKSRV_PID_DIR
-
-	data := C.struct_ublksrv_dev_data{
-		queue_depth:      C.ushort(queueDepth),
-		nr_hw_queues:     C.ushort(nrHwQueues),
-		run_dir:          C.CString(runDir),
-		max_io_buf_bytes: C.uint(C.DEF_BUF_SIZE),
-	}
-	d.isUp = true
-
-	go func() {
-		dev := C.ublksrv_ctrl_init(&data)
-		C.ublksrv_ctrl_add_dev(dev)
-		sectors := uint64(d.Size) >> 9
-		C.init_params(dev, C.__u64(sectors))
-
-		d.ID = int(dev.dev_info.dev_id)
-
-		C.ublksrv_start_daemon(dev)
-	}()
-
-	return nil
-}
-
 func (d *UblkDevice) startupC() error {
+
 	err := os.MkdirAll("/tmp/ublksrvd", 0755)
 	if err != nil {
 		return fmt.Errorf("error creating directory /tmp/ublksrvd: %w", err)
 	}
+
 	nrHwQueues := d.Queues
 	if nrHwQueues <= 0 {
 		nrHwQueues = int(C.DEF_NR_HW_QUEUES)
@@ -153,35 +118,49 @@ func (d *UblkDevice) startupC() error {
 		max_io_buf_bytes: C.uint(C.DEF_BUF_SIZE),
 	}
 
-	d.isUp = true
-
 	initDone := make(chan error, 1)
 	go func() {
 		dev := C.ublksrv_ctrl_init(&data)
-		C.ublksrv_ctrl_add_dev(dev)
+		if dev == nil {
+			initDone <- fmt.Errorf("ublksrv_ctrl_init returned nil")
+			return
+		}
+
+		if C.ublksrv_ctrl_add_dev(dev) < 0 {
+			initDone <- fmt.Errorf("ublksrv_ctrl_add_dev returned error")
+		}
 		sectors := uint64(d.Size) >> 9
-		C.init_params(dev, C.__u64(sectors))
+		if C.init_params(dev, C.__u64(sectors)) < 0 {
+			initDone <- fmt.Errorf("ublksrv_ctrl_add_dev returned error")
+		}
 
 		d.ID = int(dev.dev_info.dev_id)
 		registerDevice(d.ID, d)
 		initDone <- nil
-		C.ublksrv_start_daemon(dev)
+		if C.ublksrv_start_daemon(dev) < 0 {
+			fmt.Printf("ublksrv_start_daemon returned error for dev %d\n", d.ID)
+			return
+		}
 		unregisterDevice(d.ID)
-		C.ublksrv_ctrl_deinit(dev)
 		close(d.daemonDone)
 	}()
 
-	return <-initDone
+	err = <-initDone
+	if err != nil {
+		return fmt.Errorf("error initializing UBLKSRV device: %w", err)
+	}
+	d.isUp = true
+	return nil
 }
 
-func (d *UblkDevice) deleteC() {
+func (d *UblkDevice) deleteC() error {
 	go C.cmd_dev_del(C.int(d.ID))
 	<-Done
 	err := os.Remove(fmt.Sprint(C.UBLKSRV_PID_DIR, "/", d.ID, ".pid"))
 	if err != nil {
-		fmt.Println("Error deleting PID file:", err)
-		return
+		return fmt.Errorf("error deleting PID file: %w", err)
 	}
+	return nil
 }
 
 func getDeviceInfo(id int) (*DeviceInfo, error) {

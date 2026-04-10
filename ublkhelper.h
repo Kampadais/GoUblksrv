@@ -12,7 +12,7 @@
  #include <stdatomic.h>
 
 #define	DEF_QD		128
-#define	DEF_NR_HW_QUEUES 2
+#define	DEF_NR_HW_QUEUES 1
 #define	DEF_BUF_SIZE	(512 << 10)
 
 #define UBLKSRV_PID_DIR  "/tmp/ublksrvd"

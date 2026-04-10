@@ -53,10 +53,7 @@ func main() {
 		BlockSize:  4096,
 	}
 
-	dev, err := ublk.NewUblkDevice("example-file", params)
-	if err != nil {
-		log.Fatalf("Failed to create ublk device: %v", err)
-	}
+	dev := ublk.NewUblkDevice("example-file", params)
 
 	handler := &FileHandler{file: f}
 
@@ -92,6 +89,10 @@ func main() {
 
 	fmt.Println("\nStopping...")
 
-	dev.Delete()
+	err = dev.Delete()
+
+	if err != nil {
+		log.Fatalf("Failed to delete device: %v", err)
+	}
 
 }

@@ -21,7 +21,7 @@ func main() {
 	case "del":
 		delCmd(args)
 	case "list":
-		listCmd(args)
+		listCmd()
 	case "info":
 		infoCmd(args)
 	case "help":
@@ -63,12 +63,8 @@ func delCmd(args []string) {
 	fmt.Printf("Successfully deleted device ublk%d\n", *id)
 }
 
-func listCmd(args []string) {
-	devices, err := ublk.ListDevices()
-	if err != nil {
-		fmt.Printf("Error listing devices: %v\n", err)
-		os.Exit(1)
-	}
+func listCmd() {
+	devices := ublk.ListDevices()
 
 	if len(devices) == 0 {
 		fmt.Println("No ublk devices found.")

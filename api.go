@@ -12,7 +12,7 @@ type UblkParams struct {
 	BlockSize  int
 }
 
-func NewUblkDevice(name string, params UblkParams) (*UblkDevice, error) {
+func NewUblkDevice(name string, params UblkParams) *UblkDevice {
 	if params.BlockSize == 0 {
 		params.BlockSize = 4096
 	}
@@ -28,10 +28,10 @@ func NewUblkDevice(name string, params UblkParams) (*UblkDevice, error) {
 		done:       make(chan struct{}),
 		daemonDone: make(chan struct{}),
 	}
-	return d, nil
+	return d
 }
 
-func ListDevices() ([]DeviceInfo, error) {
+func ListDevices() []DeviceInfo {
 	var devices []DeviceInfo
 	entries, err := os.ReadDir("/sys/class/ublk")
 	if err != nil {
@@ -42,7 +42,7 @@ func ListDevices() ([]DeviceInfo, error) {
 				devices = append(devices, *info)
 			}
 		}
-		return devices, nil
+		return devices
 	}
 
 	for _, entry := range entries {
@@ -55,20 +55,11 @@ func ListDevices() ([]DeviceInfo, error) {
 			}
 		}
 	}
-	return devices, nil
+	return devices
 }
 
 func GetDeviceInfo(id int) (*DeviceInfo, error) {
 	return getDeviceInfo(id)
-}
-
-func DeleteDevice(id int) error {
-	d := &UblkDevice{
-		ID:         id,
-		daemonDone: make(chan struct{}),
-	}
-	d.deleteC()
-	return nil
 }
 
 func (d *UblkDevice) Start(handler IOHandler) error {
@@ -91,8 +82,17 @@ func (d *UblkDevice) Start(handler IOHandler) error {
 	return d.startupC()
 }
 
-func (d *UblkDevice) Delete() {
-	d.deleteC()
+func (d *UblkDevice) Delete() error {
+	return DeleteDevice(d.ID)
+}
+
+func DeleteDevice(id int) error {
+	d := &UblkDevice{
+		ID:         id,
+		daemonDone: make(chan struct{}),
+	}
+
+	return d.deleteC()
 }
 
 func (d *UblkDevice) GetInfo() (*DeviceInfo, error) {
