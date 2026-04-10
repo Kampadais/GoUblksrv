@@ -38,6 +38,7 @@ type Request struct {
 	Size         uint32
 	RData        []byte
 	WData        []byte
+	Result       int
 }
 
 type DeviceInfo struct {

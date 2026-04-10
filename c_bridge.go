@@ -64,6 +64,10 @@ func onRequestAsync(msg *C.struct_msghdr, req *C.struct_message, opType C.int, q
 		d.requests <- msgObj
 		<-msgObj.Complete
 
+		if msgObj.Result == -1 {
+			C.ublksrv_complete_io(q, C.uint(data.tag), -C.EIO)
+		}
+
 		if opType == C.LONGHORN_CMD_TYPE_READ {
 			dst := unsafe.Slice((*byte)(dataPtr), dataLen)
 			copy(dst, msgObj.RData)

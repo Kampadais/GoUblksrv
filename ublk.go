@@ -49,6 +49,7 @@ func (d *UblkDevice) handleRead(msg *Request) {
 	msg.RData = msg.RData[:msg.Size]
 	_, err := d.handler.ReadAt(msg.RData, msg.Offset)
 	if err != nil {
+		msg.Result = -1
 		fmt.Printf("Read error: %v\n", err)
 	}
 	msg.Complete <- struct{}{}
@@ -57,6 +58,7 @@ func (d *UblkDevice) handleRead(msg *Request) {
 func (d *UblkDevice) handleWrite(msg *Request) {
 	_, err := d.handler.WriteAt(msg.WData, msg.Offset)
 	if err != nil {
+		msg.Result = -1
 		fmt.Printf("Write error: %v\n", err)
 	}
 	msg.Complete <- struct{}{}
@@ -65,6 +67,7 @@ func (d *UblkDevice) handleWrite(msg *Request) {
 func (d *UblkDevice) handleUnmap(msg *Request) {
 	_, err := d.handler.UnmapAt(msg.Size, msg.Offset)
 	if err != nil {
+		msg.Result = -1
 		fmt.Printf("Unmap error: %v\n", err)
 	}
 	msg.Complete <- struct{}{}
